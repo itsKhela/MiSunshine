@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Mi Sunshine</string>
+    <string name="action_settings">Settings</string>
+    <string name="weather">weather icon</string>
+    <string name="action_refresh">Refresh</string>
+</resources>
