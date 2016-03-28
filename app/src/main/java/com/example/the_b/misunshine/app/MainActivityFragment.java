@@ -12,8 +12,10 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -38,12 +40,12 @@ public class MainActivityFragment extends Fragment {
     private ArrayAdapter<String> mForecastAdapter;
 
     public MainActivityFragment() {
-
     }
 
     @Override
-    public void onCreate(Bundle savedInstanceState){
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Add this line in order for this fragment to handle menu events.
         setHasOptionsMenu(true);
     }
 
@@ -53,8 +55,10 @@ public class MainActivityFragment extends Fragment {
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item){
-
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
         if (id == R.id.action_refresh) {
             FetchWeatherTask weatherTask = new FetchWeatherTask();
@@ -67,9 +71,9 @@ public class MainActivityFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View rootView = inflater.inflate(R.layout.fragment_main, container, false);
 
-        String[] forecastArray ={
+        // Create some dummy data for the ListView.  Here's a sample weekly forecast
+        String[] data ={
                 "Today - Sunny 88/63",
                 "Tomorrow - Sunny 88/63",
                 "Wednesday - Sunny 88/63",
@@ -78,22 +82,35 @@ public class MainActivityFragment extends Fragment {
                 "Saturday - Sunny 88/63",
                 "Sunday - Sunny 88/63"
         };
+        List<String> weekForecast = new ArrayList<String>(Arrays.asList(data));
 
-        List<String> forecast = new ArrayList<String>(Arrays.asList(forecastArray));
-        ArrayAdapter<String> weatherAdapter =
+        // Now that we have some dummy forecast data, create an ArrayAdapter.
+        // The ArrayAdapter will take data from a source (like our dummy forecast) and
+        // use it to populate the ListView it's attached to.
+        mForecastAdapter =
                 new ArrayAdapter<String>(
-                        getActivity(),
-                        R.layout.list_item_forecast,
-                        R.id.list_item_forecast_textview,
-                        forecast);
+                        getActivity(), // The current context (this activity)
+                        R.layout.list_item_forecast, // The name of the layout ID.
+                        R.id.list_item_forecast_textview, // The ID of the textview to populate.
+                        weekForecast);
 
-        ListView weatherList = (ListView) rootView.findViewById(R.id.listview_forecast);
-        weatherList.setAdapter(weatherAdapter);
+        View rootView = inflater.inflate(R.layout.fragment_main, container, false);
+
+        // Get a reference to the ListView, and attach this adapter to it.
+        ListView listView = (ListView) rootView.findViewById(R.id.listview_forecast);
+        listView.setAdapter(mForecastAdapter);
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                String forecast = mForecastAdapter.getItem(position);
+                Toast.makeText(getActivity(), forecast, Toast.LENGTH_SHORT).show();
+            }
+        });
 
         return rootView;
     }
 
-    public class FetchWeatherTask extends AsyncTask<String, Void, String[]>{
+    public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
 
         private final String LOG_TAG = FetchWeatherTask.class.getSimpleName();
 
@@ -195,22 +212,21 @@ public class MainActivityFragment extends Fragment {
             return resultStrs;
 
         }
-
-
-
         @Override
         protected String[] doInBackground(String... params) {
-            // These two need to be declared outside the try/catch
-            // so that they can be closed in the finally block.
+
+            // If there's no zip code, there's nothing to look up.  Verify size of params.
             if (params.length == 0) {
                 return null;
             }
 
-            // Will contain the raw JSON response as a string.
-            String forecastJsonStr = null;
-
+            // These two need to be declared outside the try/catch
+            // so that they can be closed in the finally block.
             HttpURLConnection urlConnection = null;
             BufferedReader reader = null;
+
+            // Will contain the raw JSON response as a string.
+            String forecastJsonStr = null;
 
             String format = "json";
             String units = "metric";
@@ -265,12 +281,14 @@ public class MainActivityFragment extends Fragment {
                     return null;
                 }
                 forecastJsonStr = buffer.toString();
+
+                Log.v(LOG_TAG, "Forecast string: " + forecastJsonStr);
             } catch (IOException e) {
                 Log.e(LOG_TAG, "Error ", e);
                 // If the code didn't successfully get the weather data, there's no point in attemping
                 // to parse it.
                 return null;
-            } finally{
+            } finally {
                 if (urlConnection != null) {
                     urlConnection.disconnect();
                 }
@@ -279,11 +297,6 @@ public class MainActivityFragment extends Fragment {
                         reader.close();
                     } catch (final IOException e) {
                         Log.e(LOG_TAG, "Error closing stream", e);
-                /*  This are the other possible errors:
-                    Log.w("PlaceholderFragment", "Error closing stream", e);
-                    Log.i("PlaceholderFragment", "Error closing stream", e);
-                    Log.d("PlaceholderFragment", "Error closing stream", e);
-                    Log.v("PlaceholderFragment", "Error closing stream", e);*/
                     }
                 }
             }
@@ -295,8 +308,10 @@ public class MainActivityFragment extends Fragment {
                 e.printStackTrace();
             }
 
+            // This will only happen if there was an error getting or parsing the forecast.
             return null;
         }
+
         @Override
         protected void onPostExecute(String[] result) {
             if (result != null) {
